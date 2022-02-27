@@ -4,7 +4,18 @@ class_name PlanetMeshFace
 
 export var normal : Vector3
 
-func generate_mesh():
+# Use https://catlikecoding.com/unity/tutorials/cube-sphere/ to improve mapping of cube
+# points to sphere, so as to equalizeareas of quadritalerals produced as much as possible.
+func optimized_point_on_sphere(pointOnUnitCube: Vector3):
+	var x2 := pointOnUnitCube.x * pointOnUnitCube.x
+	var y2 := pointOnUnitCube.y * pointOnUnitCube.y
+	var z2 := pointOnUnitCube.z * pointOnUnitCube.z
+	var sx := pointOnUnitCube.x * sqrt(1.0 - y2 / 2.0 - z2 / 2.0 + y2 * z2 / 3.0)
+	var sy := pointOnUnitCube.y * sqrt(1.0 - x2 / 2.0 - z2 / 2.0 + x2 * z2 / 3.0)
+	var sz := pointOnUnitCube.z * sqrt(1.0 - x2 / 2.0 - y2 / 2.0 + x2 * y2 / 3.0)			
+	return Vector3(sx, sy, sz)
+
+func generate_mesh(planet_data : PlanetData):
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
 	
@@ -13,7 +24,7 @@ func generate_mesh():
 	var normal_array := PoolVector3Array()
 	var index_array := PoolIntArray()
 	
-	var resolution := 32
+	var resolution := planet_data.resolution
 	var num_vertices : int = resolution * resolution
 	var num_indices : int = (resolution - 1) * (resolution -1) * 6
 	
@@ -30,19 +41,10 @@ func generate_mesh():
 			var i : int = x + y * resolution
 			var percent := Vector2(x, y) / (resolution - 1)
 			var pointOnUnitCube : Vector3 = normal + (percent.x - 0.5) * 2.0 * axisA + (percent.y - 0.5) * 2.0 * axisB
+			var pointOnUnitSphere = optimized_point_on_sphere(pointOnUnitCube)
+			var pointOnPlanet := planet_data.point_on_planet(pointOnUnitSphere)
 			
-			# Use https://catlikecoding.com/unity/tutorials/cube-sphere/
-			# to improve mapping cube points to sphere, so as to equalize
-			# areas of quadritalerals produced as much as possible
-			var x2 := pointOnUnitCube.x * pointOnUnitCube.x
-			var y2 := pointOnUnitCube.y * pointOnUnitCube.y
-			var z2 := pointOnUnitCube.z * pointOnUnitCube.z
-			var sx := pointOnUnitCube.x * sqrt(1.0 - y2 / 2.0 - z2 / 2.0 + y2 * z2 / 3.0)
-			var sy := pointOnUnitCube.y * sqrt(1.0 - x2 / 2.0 - z2 / 2.0 + x2 * z2 / 3.0)
-			var sz := pointOnUnitCube.z * sqrt(1.0 - x2 / 2.0 - y2 / 2.0 + x2 * y2 / 3.0)			
-			var pointOnUnitSphere := Vector3(sx, sy, sz)
-			
-			vertex_array[i] = pointOnUnitSphere
+			vertex_array[i] = pointOnPlanet
 			if x != resolution - 1 and y != resolution - 1:
 				index_array[tri_index + 2] = i
 				index_array[tri_index + 1] = i + resolution + 1
